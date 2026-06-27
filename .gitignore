@@ -1,0 +1,8 @@
+node_modules/
+.expo/
+dist/
+.env
+*.zip
+zipFile.zip
+attached_assets/
+.cache/

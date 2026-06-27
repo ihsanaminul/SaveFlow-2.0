@@ -1,0 +1,19 @@
+uploads = []
+
+[[generated]]
+id = "csm-4m-cdYrOQAu4deQE2"
+uri = "file://artifacts/video-downloader/assets/images/icon.png"
+type = "image"
+title = "video saver app icon"
+
+[[generated]]
+id = "KSI0M5S89FlS3yLugkyUM"
+uri = "file://artifacts/video-downloader/assets/images/splash.png"
+type = "image"
+title = "video saver splash screen"
+
+[[outputs]]
+id = "5-J81eGuCX31B9clK48mu"
+uri = "file://README.md"
+type = "text"
+title = "README.md — SaveFlow"

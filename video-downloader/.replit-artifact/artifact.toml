@@ -1,0 +1,27 @@
+kind = "mobile"
+previewPath = "/"
+title = "VideoSaver"
+version = "1.0.0"
+id = "artifacts/video-downloader"
+router = "expo-domain"
+
+[[integratedSkills]]
+name = "expo"
+version = "1.0.0"
+
+[[services]]
+ensurePreviewReachable = "/status"
+name = "expo"
+paths = [ "/" ]
+localPort = 23028
+
+[services.development]
+run = "pnpm --filter @workspace/video-downloader run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/video-downloader", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/video-downloader", "run", "serve" ]
+
+[services.env]
+PORT = "23028"
+BASE_PATH = "/"
