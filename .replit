@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "web", "nix"]
+modules = ["nodejs-20", "nix"]
 
 [deployment]
 router = "application"
@@ -46,6 +46,7 @@ externalPort = 8080
 [[ports]]
 localPort = 8082
 externalPort = 3003
+exposeLocalhost = true
 
 [[ports]]
 localPort = 8083
