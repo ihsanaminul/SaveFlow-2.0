@@ -18,7 +18,7 @@ const PLATFORM_DATA: Record<string, { color: string; icon: string; bg: string }>
 }
 
 export function getPlatformColor(name: string): string {
-  return PLATFORM_DATA[name]?.color ?? C.blue
+  return PLATFORM_DATA[name]?.color ?? C.accent
 }
 
 export function getPlatformIcon(name: string): string {
@@ -26,7 +26,7 @@ export function getPlatformIcon(name: string): string {
 }
 
 export function getPlatformBg(name: string): string {
-  return PLATFORM_DATA[name]?.bg ?? C.blueDim
+  return PLATFORM_DATA[name]?.bg ?? C.accentDim
 }
 
 interface PlatformChipProps {
@@ -37,7 +37,7 @@ interface PlatformChipProps {
 }
 
 export function PlatformChip({ name, size = 36, showLabel, style }: PlatformChipProps) {
-  const data  = PLATFORM_DATA[name] ?? { color: C.blue, icon: 'globe', bg: C.blueDim }
+  const data  = PLATFORM_DATA[name] ?? { color: C.accent, icon: 'globe', bg: C.accentDim }
   const icon  = Math.round(size * 0.44)
 
   return (

@@ -37,7 +37,7 @@ export default function Card({
     borderWidth: 1,
     borderColor: glow ? (glowColor ?? C.borderHi) : C.border,
     ...(glow && {
-      shadowColor: glowColor ?? C.blue,
+      shadowColor: glowColor ?? C.accent,
       shadowOffset: { width: 0, height: 0 },
       shadowRadius: 18,
       shadowOpacity: 0.35,

@@ -58,7 +58,7 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ErrorBoundary>
         <GestureHandlerRootView style={{ flex: 1 }}>
-          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#07091C' }, animation: 'slide_from_right' }}>
+          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#0D0D0D' }, animation: 'slide_from_right' }}>
             <Stack.Screen name="index" options={{ animation: 'fade' }} />
             <Stack.Screen name="welcome" options={{ animation: 'fade' }} />
             <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />

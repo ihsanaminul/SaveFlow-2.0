@@ -11,7 +11,7 @@ export default function NotFoundScreen() {
           Halaman ini tidak ada.
         </Text>
         <Link href="/" style={s.link}>
-          <Text style={[s.linkText, { color: C.accent2 }]}>
+          <Text style={[s.linkText, { color: C.accent }]}>
             Kembali ke beranda
           </Text>
         </Link>
