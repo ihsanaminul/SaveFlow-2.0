@@ -1,88 +1,82 @@
+import React, { useEffect } from 'react'
 import { Tabs } from 'expo-router'
-import React, { useCallback, useEffect } from 'react'
-import { Pressable, StyleSheet, Text, View, Dimensions } from 'react-native'
+import { View, Text, Pressable, StyleSheet } from 'react-native'
 import * as Haptics from 'expo-haptics'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Animated, {
-  useSharedValue, useAnimatedStyle, withSpring,
+  useSharedValue, useAnimatedStyle, withSpring, withTiming,
 } from 'react-native-reanimated'
 import { Ionicons } from '@expo/vector-icons'
 import { C } from '@/constants/colors'
 
-const { width: W } = Dimensions.get('window')
+const PILL_W_ON  = 126
+const PILL_W_OFF = 46
 
 const TABS = [
-  { name: 'index',    icon: 'home-outline' as const,     iconOn: 'home' as const,     label: 'Beranda'    },
-  { name: 'history',  icon: 'time-outline' as const,     iconOn: 'time' as const,     label: 'Riwayat'    },
-  { name: 'settings', icon: 'settings-outline' as const, iconOn: 'settings' as const, label: 'Pengaturan' },
+  { name: 'index',    label: 'Beranda',    icon: 'home-outline'     as const, iconOn: 'home'     as const },
+  { name: 'history',  label: 'Riwayat',    icon: 'time-outline'     as const, iconOn: 'time'     as const },
+  { name: 'settings', label: 'Pengaturan', icon: 'settings-outline' as const, iconOn: 'settings' as const },
 ]
 
-function TabItem({
-  icon, iconOn, label, focused, onPress,
-}: {
-  icon: any; iconOn: any; label: string; focused: boolean; onPress: () => void
+function TabPill({ tab, focused, onPress }: {
+  tab: typeof TABS[number]
+  focused: boolean
+  onPress: () => void
 }) {
-  const sc = useSharedValue(1)
+  const pillW  = useSharedValue(focused ? PILL_W_ON : PILL_W_OFF)
+  const textOp = useSharedValue(focused ? 1 : 0)
 
   useEffect(() => {
-    sc.value = withSpring(focused ? 1 : 1, { damping: 20, stiffness: 260 })
+    pillW.value  = withSpring(focused ? PILL_W_ON : PILL_W_OFF, { damping: 22, stiffness: 260 })
+    textOp.value = withTiming(focused ? 1 : 0, { duration: focused ? 200 : 80 })
   }, [focused])
 
-  const pressStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: sc.value }],
-  }))
+  const pillStyle = useAnimatedStyle(() => ({ width: pillW.value }))
+  const textStyle = useAnimatedStyle(() => ({ opacity: textOp.value }))
 
   return (
     <Pressable
       onPress={onPress}
-      onPressIn={() => {
-        Haptics.selectionAsync()
-        sc.value = withSpring(0.88, { damping: 14, stiffness: 320 })
-      }}
-      onPressOut={() => {
-        sc.value = withSpring(1, { damping: 12, stiffness: 260 })
-      }}
-      style={b.tabPress}
+      onPressIn={() => Haptics.selectionAsync()}
     >
-      <Animated.View style={[b.tabInner, pressStyle]}>
-        <View style={[b.iconWrap, focused && { backgroundColor: C.accentDim }]}>
-          <Ionicons
-            name={focused ? iconOn : icon}
-            size={22}
-            color={focused ? C.accent : C.textMuted}
-          />
-        </View>
-        <Text style={[b.label, { color: focused ? C.accent : C.textMuted }]}>
-          {label}
-        </Text>
-        {focused && <View style={b.activeDot} />}
+      <Animated.View
+        style={[
+          styles.pill,
+          focused ? styles.pillOn : styles.pillOff,
+          pillStyle,
+        ]}
+      >
+        <Ionicons
+          name={focused ? tab.iconOn : tab.icon}
+          size={20}
+          color={focused ? C.accent : '#5A5A5A'}
+        />
+        <Animated.Text style={[styles.pillLabel, textStyle]} numberOfLines={1}>
+          {tab.label}
+        </Animated.Text>
       </Animated.View>
     </Pressable>
   )
 }
 
-function CustomTabBar({ state, navigation }: { state: any; navigation: any }) {
+function PillTabBar({ state, navigation }: { state: any; navigation: any }) {
   const insets = useSafeAreaInsets()
 
-  const handlePress = useCallback((name: string) => {
-    navigation.navigate(name)
-  }, [navigation])
-
   return (
-    <View style={[b.barWrap, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-      <View style={b.bar}>
+    <View
+      style={[styles.barOuter, { bottom: Math.max(insets.bottom, 8) + 8 }]}
+      pointerEvents="box-none"
+    >
+      <View style={styles.bar}>
         {state.routes.map((route: any, i: number) => {
-          const tab     = TABS.find(t => t.name === route.name)
-          const focused = state.index === i
+          const tab = TABS.find(t => t.name === route.name)
           if (!tab) return null
           return (
-            <TabItem
+            <TabPill
               key={route.key}
-              icon={tab.icon}
-              iconOn={tab.iconOn}
-              label={tab.label}
-              focused={focused}
-              onPress={() => handlePress(route.name)}
+              tab={tab}
+              focused={state.index === i}
+              onPress={() => navigation.navigate(route.name)}
             />
           )
         })}
@@ -94,7 +88,7 @@ function CustomTabBar({ state, navigation }: { state: any; navigation: any }) {
 export default function TabLayout() {
   return (
     <Tabs
-      tabBar={props => <CustomTabBar state={props.state} navigation={props.navigation} />}
+      tabBar={props => <PillTabBar state={props.state} navigation={props.navigation} />}
       screenOptions={{ headerShown: false }}
     >
       <Tabs.Screen name="index"    />
@@ -104,45 +98,52 @@ export default function TabLayout() {
   )
 }
 
-const b = StyleSheet.create({
-  barWrap: {
-    backgroundColor: C.bg2,
-    borderTopWidth: 1,
-    borderTopColor: C.border,
-    paddingTop: 10,
-    paddingHorizontal: 8,
+const styles = StyleSheet.create({
+  barOuter: {
+    position: 'absolute',
+    left: 20,
+    right: 20,
+    alignItems: 'center',
   },
   bar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-around',
+    gap: 6,
+    backgroundColor: '#181818',
+    borderRadius: 50,
+    borderWidth: 1,
+    borderColor: '#282828',
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+    elevation: 20,
   },
-  tabPress: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  tabInner: {
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 4,
-  },
-  iconWrap: {
-    width: 44,
-    height: 34,
-    borderRadius: 10,
+  pill: {
+    height: 44,
+    borderRadius: 22,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 7,
+    overflow: 'hidden',
+    paddingHorizontal: 11,
   },
-  label: {
-    fontSize: 11,
-    fontFamily: 'PlusJakartaSans_600SemiBold',
+  pillOn: {
+    backgroundColor: 'rgba(200,245,0,0.13)',
+    borderWidth: 1,
+    borderColor: 'rgba(200,245,0,0.35)',
+  },
+  pillOff: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+  },
+  pillLabel: {
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 13,
+    color: C.accent,
     letterSpacing: 0.2,
-  },
-  activeDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: C.accent,
-    marginTop: 2,
   },
 })

@@ -3,54 +3,39 @@ import { View, Text, TouchableOpacity, StyleSheet, StatusBar } from 'react-nativ
 import { useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Animated, {
-  useSharedValue, useAnimatedStyle, withTiming, withDelay, withSpring,
+  useSharedValue, useAnimatedStyle,
+  withTiming, withDelay, withSpring, Easing,
 } from 'react-native-reanimated'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import C from '@/constants/colors'
+import { C } from '@/constants/colors'
 
 const PLATFORMS = [
-  { color: '#FF0000', icon: 'youtube' as const },
-  { color: '#69C9D0', icon: 'music-note-outline' as const },
-  { color: '#E1306C', icon: 'instagram' as const },
-  { color: '#1DA1F2', icon: 'twitter' as const },
-  { color: '#1877F2', icon: 'facebook' as const },
-  { color: '#FF4500', icon: 'reddit' as const },
-  { color: '#E60023', icon: 'pinterest' as const },
-  { color: '#1AB7EA', icon: 'vimeo' as const },
+  { color: '#FF0000', icon: 'youtube'            as const },
+  { color: '#69C9D0', icon: 'music-note-outline'  as const },
+  { color: '#E1306C', icon: 'instagram'           as const },
+  { color: '#1DA1F2', icon: 'twitter'             as const },
+  { color: '#1877F2', icon: 'facebook'            as const },
+  { color: '#E60023', icon: 'pinterest'           as const },
+  { color: '#FF4500', icon: 'reddit'              as const },
+  { color: '#1AB7EA', icon: 'vimeo'               as const },
 ]
+
+function AnimIn({ children, delay, style }: {
+  children: React.ReactNode; delay: number; style?: any
+}) {
+  const op = useSharedValue(0)
+  const ty = useSharedValue(24)
+  useEffect(() => {
+    op.value = withDelay(delay, withTiming(1, { duration: 600, easing: Easing.out(Easing.cubic) }))
+    ty.value = withDelay(delay, withSpring(0, { damping: 22, stiffness: 200 }))
+  }, [])
+  const anim = useAnimatedStyle(() => ({ opacity: op.value, transform: [{ translateY: ty.value }] }))
+  return <Animated.View style={[anim, style]}>{children}</Animated.View>
+}
 
 export default function WelcomeScreen() {
   const router = useRouter()
-
-  const op1 = useSharedValue(0)
-  const y1  = useSharedValue(30)
-  const op2 = useSharedValue(0)
-  const y2  = useSharedValue(40)
-  const op3 = useSharedValue(0)
-  const sc3 = useSharedValue(0.88)
-
-  useEffect(() => {
-    op1.value = withDelay(80,  withTiming(1, { duration: 650 }))
-    y1.value  = withDelay(80,  withTiming(0, { duration: 650 }))
-    op2.value = withDelay(300, withTiming(1, { duration: 600 }))
-    y2.value  = withDelay(300, withTiming(0, { duration: 600 }))
-    op3.value = withDelay(550, withTiming(1, { duration: 500 }))
-    sc3.value = withDelay(550, withSpring(1, { damping: 14 }))
-  }, [])
-
-  const anim1 = useAnimatedStyle(() => ({
-    opacity: op1.value,
-    transform: [{ translateY: y1.value }],
-  }))
-  const anim2 = useAnimatedStyle(() => ({
-    opacity: op2.value,
-    transform: [{ translateY: y2.value }],
-  }))
-  const anim3 = useAnimatedStyle(() => ({
-    opacity: op3.value,
-    transform: [{ scale: sc3.value }],
-  }))
 
   async function handleStart() {
     await AsyncStorage.setItem('welcomed', '1')
@@ -58,145 +43,198 @@ export default function WelcomeScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={s.safe}>
       <StatusBar barStyle="light-content" backgroundColor={C.bg} />
-      <View style={styles.container}>
-        <Animated.View style={[styles.logoArea, anim1]}>
-          <View style={styles.iconCircle}>
-            <MaterialCommunityIcons name="download-circle-outline" size={50} color={C.accent} />
-          </View>
-          <Text style={styles.appName}>SaveFlow</Text>
-          <Text style={styles.appTag}>VIDEO DOWNLOADER</Text>
-        </Animated.View>
 
-        <Animated.View style={[styles.heroArea, anim2]}>
-          <Text style={styles.heroLine1}>DOWNLOAD</Text>
-          <Text style={styles.heroLine2}>TANPA BATAS.</Text>
-          <Text style={styles.heroSub}>
-            Unduh video & foto dari 8+ platform{'\n'}tanpa watermark. Cepat, gratis, mudah.
-          </Text>
-        </Animated.View>
-
-        <Animated.View style={[styles.platformRow, anim2]}>
-          {PLATFORMS.map((p, i) => (
-            <View
-              key={i}
-              style={[styles.platformDot, { backgroundColor: p.color + '22', borderColor: p.color + '55' }]}
-            >
-              <MaterialCommunityIcons name={p.icon} size={16} color={p.color} />
+      <View style={s.root}>
+        {/* Logo row */}
+        <AnimIn delay={0}>
+          <View style={s.logoRow}>
+            <View style={s.logoBox}>
+              <MaterialCommunityIcons name="download-circle-outline" size={34} color={C.accent} />
             </View>
-          ))}
-        </Animated.View>
+            <View>
+              <Text style={s.appName}>SaveFlow</Text>
+              <Text style={s.appTag}>VIDEO DOWNLOADER</Text>
+            </View>
+          </View>
+        </AnimIn>
 
-        <Animated.View style={anim3}>
-          <TouchableOpacity style={styles.ctaBtn} onPress={handleStart} activeOpacity={0.82}>
-            <Text style={styles.ctaBtnText}>MULAI SEKARANG</Text>
-            <MaterialCommunityIcons name="arrow-right" size={20} color={C.bg} />
+        {/* Hero */}
+        <AnimIn delay={100}>
+          <View style={s.heroWrap}>
+            <Text style={s.heroLine1}>DOWNLOAD</Text>
+            <Text style={s.heroLine2}>TANPA BATAS.</Text>
+            <Text style={s.heroSub}>
+              Unduh video & foto dari 8+ platform tanpa{'\n'}watermark — cepat, gratis, tanpa login.
+            </Text>
+          </View>
+        </AnimIn>
+
+        {/* Platforms */}
+        <AnimIn delay={200}>
+          <View style={s.platforms}>
+            {PLATFORMS.map((p, i) => (
+              <View
+                key={i}
+                style={[s.platDot, { backgroundColor: p.color + '22', borderColor: p.color + '55' }]}
+              >
+                <MaterialCommunityIcons name={p.icon} size={18} color={p.color} />
+              </View>
+            ))}
+          </View>
+        </AnimIn>
+
+        {/* Stat pills */}
+        <AnimIn delay={300}>
+          <View style={s.pillRow}>
+            <View style={s.statPill}>
+              <Text style={s.statNum}>8+</Text>
+              <Text style={s.statLbl}>Platform</Text>
+            </View>
+            <View style={[s.statPill, { backgroundColor: C.accentDim, borderColor: C.borderHi }]}>
+              <Text style={[s.statNum, { color: C.accent }]}>0</Text>
+              <Text style={[s.statLbl, { color: C.accent }]}>Watermark</Text>
+            </View>
+            <View style={s.statPill}>
+              <Text style={s.statNum}>∞</Text>
+              <Text style={s.statLbl}>Gratis</Text>
+            </View>
+          </View>
+        </AnimIn>
+
+        {/* CTA */}
+        <AnimIn delay={420}>
+          <TouchableOpacity style={s.cta} onPress={handleStart} activeOpacity={0.82}>
+            <MaterialCommunityIcons name="arrow-right-circle" size={22} color={C.bg} />
+            <Text style={s.ctaTxt}>MULAI SEKARANG</Text>
           </TouchableOpacity>
-        </Animated.View>
+        </AnimIn>
 
-        <Text style={styles.footer}>Tanpa login · Tanpa iklan · 100% gratis</Text>
+        {/* Footer */}
+        <AnimIn delay={520}>
+          <View style={s.footerWrap}>
+            <Text style={s.footer}>Tanpa akun · Tanpa iklan · 100% Gratis</Text>
+            <Text style={s.copy}>© 2025 SaveFlow  by Cleo 桜闇</Text>
+          </View>
+        </AnimIn>
       </View>
     </SafeAreaView>
   )
 }
 
-const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: C.bg,
-  },
-  container: {
+const s = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: C.bg },
+  root: {
     flex: 1,
     paddingHorizontal: 28,
+    paddingTop: 24,
+    paddingBottom: 20,
     justifyContent: 'center',
     gap: 26,
   },
-  logoArea: {
-    alignItems: 'flex-start',
-    gap: 6,
-  },
-  iconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 22,
+  logoRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  logoBox: {
+    width: 58,
+    height: 58,
+    borderRadius: 18,
     backgroundColor: C.accentDim,
     borderWidth: 1.5,
     borderColor: C.borderHi,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
   },
   appName: {
     fontFamily: 'PlusJakartaSans_800ExtraBold',
-    fontSize: 26,
+    fontSize: 22,
     color: C.text,
-    letterSpacing: 0.5,
   },
   appTag: {
     fontFamily: 'PlusJakartaSans_500Medium',
-    fontSize: 11,
-    color: C.textSub,
+    fontSize: 10,
+    color: C.textMuted,
     letterSpacing: 3,
+    marginTop: 2,
   },
-  heroArea: {
-    gap: 6,
-  },
+  heroWrap: { gap: 2 },
   heroLine1: {
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     fontSize: 46,
     color: C.text,
-    letterSpacing: -1,
+    letterSpacing: -1.5,
     lineHeight: 50,
   },
   heroLine2: {
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     fontSize: 46,
     color: C.accent,
-    letterSpacing: -1,
+    letterSpacing: -1.5,
     lineHeight: 52,
   },
   heroSub: {
     fontFamily: 'PlusJakartaSans_500Medium',
-    fontSize: 15,
+    fontSize: 14,
     color: C.textSub,
-    lineHeight: 23,
-    marginTop: 6,
+    lineHeight: 22,
+    marginTop: 10,
   },
-  platformRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  platformDot: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+  platforms: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  platDot: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  ctaBtn: {
-    backgroundColor: C.accent,
+  pillRow: { flexDirection: 'row', gap: 10 },
+  statPill: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 14,
     borderRadius: 14,
+    backgroundColor: C.card,
+    borderWidth: 1,
+    borderColor: C.border,
+    gap: 3,
+  },
+  statNum: {
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    fontSize: 22,
+    color: C.text,
+  },
+  statLbl: {
+    fontFamily: 'PlusJakartaSans_500Medium',
+    fontSize: 11,
+    color: C.textSub,
+  },
+  cta: {
+    backgroundColor: C.accent,
+    borderRadius: 16,
     paddingVertical: 18,
-    paddingHorizontal: 28,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
   },
-  ctaBtnText: {
+  ctaTxt: {
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     fontSize: 15,
     color: C.bg,
     letterSpacing: 1.5,
   },
+  footerWrap: { alignItems: 'center', gap: 4 },
   footer: {
     fontFamily: 'PlusJakartaSans_500Medium',
     fontSize: 12,
     color: C.textMuted,
     textAlign: 'center',
-    letterSpacing: 0.4,
+  },
+  copy: {
+    fontFamily: 'PlusJakartaSans_500Medium',
+    fontSize: 11,
+    color: C.textMuted,
+    textAlign: 'center',
+    letterSpacing: 0.3,
   },
 })

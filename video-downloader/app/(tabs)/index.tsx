@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   TextInput, Keyboard, KeyboardAvoidingView, Platform, StatusBar,
+  Dimensions,
 } from 'react-native'
 import { Feather } from '@expo/vector-icons'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
@@ -20,11 +21,9 @@ import { C } from '@/constants/colors'
 import { formatFileSize, formatSpeed, formatEta } from '@/utils/fileUtils'
 import { MediaInfo, QualityOption } from '@/types'
 
-const PLATFORM_LIST = [
-  'YouTube', 'TikTok', 'Instagram', 'Facebook',
-  'Twitter', 'Pinterest', 'Reddit', 'Vimeo',
-]
-const PLAT_CFG: Record<string, { color: string; icon: string }> = {
+const { width: W } = Dimensions.get('window')
+
+const PLAT: Record<string, { color: string; icon: string }> = {
   YouTube:    { color: '#FF0000', icon: 'youtube' },
   TikTok:     { color: '#69C9D0', icon: 'music-note-outline' },
   Instagram:  { color: '#E1306C', icon: 'instagram' },
@@ -35,48 +34,25 @@ const PLAT_CFG: Record<string, { color: string; icon: string }> = {
   Vimeo:      { color: '#1AB7EA', icon: 'vimeo' },
   Dailymotion:{ color: '#0066DC', icon: 'television-play' },
 }
-const platColor = (n: string) => PLAT_CFG[n]?.color ?? '#888'
-const platIcon  = (n: string) => (PLAT_CFG[n]?.icon ?? 'link') as any
+const pc = (n: string) => PLAT[n]?.color ?? '#888'
+const pi = (n: string) => (PLAT[n]?.icon ?? 'link') as any
 
-function Fade({ children, delay = 0, style }: { children: React.ReactNode; delay?: number; style?: any }) {
-  const op = useSharedValue(0)
-  const ty = useSharedValue(18)
-  useEffect(() => {
-    op.value = withDelay(delay, withTiming(1, { duration: 420, easing: Easing.out(Easing.cubic) }))
-    ty.value = withDelay(delay, withSpring(0, { damping: 20, stiffness: 200 }))
-  }, [])
-  const anim = useAnimatedStyle(() => ({ opacity: op.value, transform: [{ translateY: ty.value }] }))
-  return <Animated.View style={[anim, style]}>{children}</Animated.View>
-}
+const PLATFORM_LIST = ['YouTube','TikTok','Instagram','Facebook','Twitter','Pinterest','Reddit','Vimeo']
 
-function ProgBar({ progress }: { progress: number }) {
-  const w = useSharedValue(0)
-  useEffect(() => {
-    w.value = withTiming(progress, { duration: 450, easing: Easing.out(Easing.cubic) })
-  }, [progress])
-  const fillStyle = useAnimatedStyle(() => ({
-    width: `${Math.max(0, Math.min(100, w.value))}%` as any,
-  }))
-  return (
-    <View style={s.progTrack}>
-      <Animated.View style={[s.progFill, fillStyle]} />
-    </View>
-  )
-}
-
+// ── Shimmer ───────────────────────────────────────────────────
 function Shimmer() {
   const op = useSharedValue(0.3)
   useEffect(() => {
     op.value = withRepeat(
       withSequence(
-        withTiming(0.7, { duration: 600, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0.3, { duration: 600, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0.75, { duration: 650, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0.3,  { duration: 650, easing: Easing.inOut(Easing.ease) }),
       ), -1,
     )
   }, [])
   const anim = useAnimatedStyle(() => ({ opacity: op.value }))
   return (
-    <Animated.View style={[s.card, anim]}>
+    <Animated.View style={[s.card, anim, { gap: 12 }]}>
       <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
         <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: C.card3 }} />
         <View style={{ flex: 1, gap: 8 }}>
@@ -84,50 +60,82 @@ function Shimmer() {
           <View style={{ height: 8, borderRadius: 4, backgroundColor: C.card3, width: '42%' }} />
         </View>
       </View>
+      <View style={{ height: 8, borderRadius: 4, backgroundColor: C.card3, width: '80%' }} />
+      <View style={s.progTrack}>
+        <View style={{ width: '45%', height: '100%', backgroundColor: C.card3, borderRadius: 3 }} />
+      </View>
     </Animated.View>
   )
 }
 
+// ── Progress bar ──────────────────────────────────────────────
+function ProgBar({ progress }: { progress: number }) {
+  const w = useSharedValue(0)
+  useEffect(() => {
+    w.value = withTiming(Math.max(0, Math.min(100, progress)), { duration: 450, easing: Easing.out(Easing.cubic) })
+  }, [progress])
+  const fill = useAnimatedStyle(() => ({ width: `${w.value}%` as any }))
+  return (
+    <View style={s.progTrack}>
+      <Animated.View style={[s.progFill, fill]} />
+    </View>
+  )
+}
+
+// ── Quality pill ──────────────────────────────────────────────
 function QualPill({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
   return (
     <TouchableOpacity
       onPress={onPress}
       style={[s.qualPill, active && s.qualPillOn]}
-      activeOpacity={0.7}
+      activeOpacity={0.75}
     >
       <Text style={[s.qualTxt, active && s.qualTxtOn]}>{label}</Text>
     </TouchableOpacity>
   )
 }
 
-function StatCard({ icon, value, label }: { icon: string; value: string | number; label: string }) {
+// ── Platform card ─────────────────────────────────────────────
+function PlatCard({ name }: { name: string }) {
+  const color = pc(name)
+  const icon  = pi(name)
+  const sc = useSharedValue(1)
+  const anim = useAnimatedStyle(() => ({ transform: [{ scale: sc.value }] }))
   return (
-    <View style={s.statCard}>
-      <Feather name={icon as any} size={18} color={C.accent} />
-      <Text style={s.statVal}>{value}</Text>
-      <Text style={s.statLbl}>{label}</Text>
-    </View>
-  )
-}
-
-function PlatCard({ name, onPress }: { name: string; onPress: () => void }) {
-  const color = platColor(name)
-  const icon  = platIcon(name)
-  return (
-    <TouchableOpacity style={s.platCard} onPress={onPress} activeOpacity={0.75}>
-      <View style={[s.platIcon, { backgroundColor: color + '22' }]}>
-        <MaterialCommunityIcons name={icon} size={22} color={color} />
-      </View>
-      <Text style={s.platName} numberOfLines={1}>{name}</Text>
+    <TouchableOpacity
+      onPressIn={() => { sc.value = withSpring(0.88, { damping: 13, stiffness: 320 }) }}
+      onPressOut={() => { sc.value = withSpring(1, { damping: 12, stiffness: 260 }) }}
+      activeOpacity={1}
+      style={s.platCardWrap}
+    >
+      <Animated.View style={[s.platCard, anim]}>
+        <View style={[s.platIcon, { backgroundColor: color + '22' }]}>
+          <MaterialCommunityIcons name={icon} size={22} color={color} />
+        </View>
+        <Text style={s.platName} numberOfLines={1}>{name}</Text>
+      </Animated.View>
     </TouchableOpacity>
   )
 }
 
+// ── Stat mini ─────────────────────────────────────────────────
+function Stat({ icon, value, label, delay }: { icon: string; value: string | number; label: string; delay: number }) {
+  return (
+    <Animated.View entering={FadeInDown.delay(delay).springify().damping(22)} style={s.statCard}>
+      <View style={s.statIconWrap}>
+        <Feather name={icon as any} size={14} color={C.accent} />
+      </View>
+      <Text style={s.statVal}>{value}</Text>
+      <Text style={s.statLbl}>{label}</Text>
+    </Animated.View>
+  )
+}
+
+// ── Main screen ───────────────────────────────────────────────
 export default function HomeScreen() {
   const insets = useSafeAreaInsets()
-
-  const history         = useStore(st => st.history)
-  const activeDownloads = useStore(st => st.activeDownloads)
+  const history         = useStore(s => s.history)
+  const activeDownloads = useStore(s => s.activeDownloads)
   const recent          = history.slice(0, 4)
 
   const [url,     setUrl]     = useState('')
@@ -150,7 +158,7 @@ export default function HomeScreen() {
 
   const isValid  = isSupportedPlatform(url)
   const platform = isValid ? getPlatformName(url) : null
-  const pColor   = platform ? platColor(platform) : C.accent
+  const pColor   = platform ? pc(platform) : C.accent
 
   const availableQualities: QualityOption[] =
     info?.supportedQualities?.length
@@ -195,9 +203,7 @@ export default function HomeScreen() {
     } catch {}
   }, [url, isValid, quality, isActive, analyzeAndDownload, clearInfo])
 
-  const totalToday = history.filter(h =>
-    new Date(h.downloadedAt).toDateString() === new Date().toDateString()
-  ).length
+  const totalToday  = history.filter(h => new Date(h.downloadedAt).toDateString() === new Date().toDateString()).length
   const successRate = history.length > 0
     ? Math.round(history.filter(h => h.status === 'completed').length / history.length * 100)
     : 100
@@ -208,55 +214,48 @@ export default function HomeScreen() {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 120 }}
+          contentContainerStyle={{ paddingBottom: 130 }}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Header */}
-          <Fade delay={0} style={[s.header, { paddingTop: insets.top + 16 }]}>
+
+          {/* ── Header ── */}
+          <Animated.View
+            entering={FadeInDown.duration(400).springify().damping(22)}
+            style={[s.header, { paddingTop: insets.top + 18 }]}
+          >
             <View>
-              <Text style={s.greeting}>Hai 👋</Text>
+              <Text style={s.greeting}>Hai, Selamat datang! 👋</Text>
               <Text style={s.greetSub}>Siap download video hari ini?</Text>
             </View>
             <View style={s.headerBadge}>
-              <MaterialCommunityIcons name="download-circle-outline" size={22} color={C.accent} />
-              <Text style={s.headerBadgeTxt}>{history.length}</Text>
+              <MaterialCommunityIcons name="download-circle-outline" size={18} color={C.accent} />
+              <Text style={s.headerCount}>{history.length}</Text>
             </View>
-          </Fade>
+          </Animated.View>
 
-          {/* Hero text */}
-          <Fade delay={60} style={s.heroSection}>
-            <Text style={s.heroLine1}>DOWNLOAD</Text>
-            <Text style={s.heroLine2}>TANPA BATAS.</Text>
-            <Text style={s.heroSub}>Video & foto dari 8+ platform, tanpa watermark.</Text>
-          </Fade>
-
-          {/* Stats row */}
-          <Fade delay={100} style={s.statsRow}>
-            <StatCard icon="download"     value={history.length} label="Total"    />
-            <View style={s.statDivider} />
-            <StatCard icon="calendar"     value={totalToday}     label="Hari Ini" />
-            <View style={s.statDivider} />
-            <StatCard icon="check-circle" value={`${successRate}%`} label="Sukses" />
-          </Fade>
-
-          {/* Download card */}
-          <Fade delay={140} style={s.section}>
+          {/* ── URL Input ── */}
+          <Animated.View
+            entering={FadeInDown.delay(60).springify().damping(22)}
+            style={s.sectionWrap}
+          >
             <Text style={s.sectionTitle}>Download</Text>
             <Text style={s.sectionSub}>Tempel link dari platform manapun</Text>
 
-            <View style={[s.inputCard, isValid && { borderColor: pColor + '66' }]}>
-              <View style={[s.inputPrefix, { backgroundColor: isValid ? pColor + '22' : C.card3 }]}>
+            <View style={[s.inputCard, isValid && { borderColor: pColor + '70' }]}>
+              <View style={[s.inputPrefix, { backgroundColor: isValid ? pColor + '22' : C.card2 }]}>
                 {isValid && platform
-                  ? <MaterialCommunityIcons name={platIcon(platform)} size={16} color={pColor} />
-                  : <Feather name="link-2" size={16} color={C.textSub} />
+                  ? <MaterialCommunityIcons name={pi(platform)} size={16} color={pColor} />
+                  : <Feather name="link-2" size={15} color={C.textSub} />
                 }
               </View>
               <TextInput
                 ref={inputRef}
                 style={s.input}
                 value={url}
-                onChangeText={t => { setUrl(t.trim()); setInfo(null); setSuccess(false); clearError() }}
-                placeholder="Tempel link video disini…"
+                onChangeText={t => {
+                  setUrl(t.trim()); setInfo(null); setSuccess(false); clearError()
+                }}
+                placeholder="Tempel link video di sini…"
                 placeholderTextColor={C.textMuted}
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -269,7 +268,7 @@ export default function HomeScreen() {
                 ? <TouchableOpacity onPress={handleClear} style={s.inputAction} disabled={isActive}>
                     <Feather name="x" size={14} color={C.textSub} />
                   </TouchableOpacity>
-                : <TouchableOpacity onPress={handlePaste} style={s.pasteBtn} activeOpacity={0.8}>
+                : <TouchableOpacity onPress={handlePaste} style={s.pasteBtn} activeOpacity={0.82}>
                     <Feather name="clipboard" size={13} color={C.bg} />
                     <Text style={s.pasteTxt}>Tempel</Text>
                   </TouchableOpacity>
@@ -278,42 +277,43 @@ export default function HomeScreen() {
 
             {/* Error */}
             {analyzeError && !isActive && (
-              <Animated.View entering={FadeInDown.duration(280)} style={s.errorCard}>
+              <Animated.View entering={FadeInDown.duration(260)} style={s.errCard}>
                 <Feather name="alert-circle" size={14} color={C.error} />
-                <Text style={s.errorTxt} numberOfLines={2}>{analyzeError}</Text>
-                <TouchableOpacity onPress={clearError} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Text style={s.errTxt} numberOfLines={2}>{analyzeError}</Text>
+                <TouchableOpacity
+                  onPress={clearError}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
                   <Feather name="x" size={13} color={C.error} />
                 </TouchableOpacity>
               </Animated.View>
             )}
 
-            {/* Analyzing shimmer */}
+            {/* Shimmer */}
             {isAnalyzing && !isDownloading && (
               <View style={{ marginTop: 10 }}>
                 <Shimmer />
-                <Text style={s.analyzingTxt}>Sedang menganalisis…</Text>
+                <Text style={s.analyzingTxt}>Menganalisis URL…</Text>
               </View>
             )}
 
-            {/* Media info card */}
+            {/* Media info */}
             {info && !isActive && !success && (
-              <Animated.View entering={FadeInDown.springify().damping(16)} style={[s.card, { marginTop: 10 }]}>
+              <Animated.View entering={FadeInDown.springify().damping(18)} style={[s.card, { marginTop: 10 }]}>
                 <View style={s.infoRow}>
-                  <View style={[s.platBadge, { backgroundColor: platColor(info.platform) + '22' }]}>
-                    <MaterialCommunityIcons name={platIcon(info.platform)} size={18} color={platColor(info.platform)} />
-                    <Text style={[s.platBadgeTxt, { color: platColor(info.platform) }]}>{info.platform}</Text>
+                  <View style={[s.platBadge, { backgroundColor: pc(info.platform) + '22' }]}>
+                    <MaterialCommunityIcons name={pi(info.platform)} size={16} color={pc(info.platform)} />
+                    <Text style={[s.platBadgeTxt, { color: pc(info.platform) }]}>{info.platform}</Text>
                   </View>
-                  <View style={[s.typeBadge, { backgroundColor: C.accentDim }]}>
+                  <View style={s.typeBadge}>
                     <Text style={s.typeBadgeTxt}>
                       {info.type === 'gallery' ? `Galeri (${info.urls.length})` : info.type === 'video' ? 'Video' : 'Foto'}
                     </Text>
                   </View>
                 </View>
-                {info.title ? (
-                  <Text style={s.infoTitle} numberOfLines={2}>{info.title}</Text>
-                ) : null}
+                {info.title ? <Text style={s.infoTitle} numberOfLines={2}>{info.title}</Text> : null}
                 {info.thumbnail ? (
-                  <Image source={info.thumbnail} style={s.thumb} contentFit="cover" />
+                  <Image source={{ uri: info.thumbnail }} style={s.thumb} contentFit="cover" />
                 ) : null}
                 <View style={s.qualRow}>
                   {availableQualities.map(q => (
@@ -332,25 +332,21 @@ export default function HomeScreen() {
               </Animated.View>
             )}
 
-            {/* Downloading progress */}
+            {/* Downloading */}
             {isDownloading && (
               <Animated.View entering={FadeInDown.duration(280)} style={[s.card, { marginTop: 10 }]}>
                 <View style={s.progHeader}>
-                  <MaterialCommunityIcons name="download-circle-outline" size={20} color={C.accent} />
+                  <View style={s.progDot} />
                   <Text style={s.progTitle} numberOfLines={1}>
                     {currentDl?.title || 'Mengunduh…'}
                   </Text>
                   <Text style={s.progPct}>{dlProgress}%</Text>
                 </View>
                 <ProgBar progress={dlProgress} />
-                <View style={s.progStats}>
-                  <Text style={s.progStat}>
-                    {dlSpeed > 0 ? formatSpeed(dlSpeed) : '—'}
-                  </Text>
-                  <Text style={s.progStat}>
-                    {dlEta > 0 ? formatEta(dlEta) : '—'}
-                  </Text>
-                  <Text style={s.progStat}>
+                <View style={s.progMeta}>
+                  <Text style={s.progMetaTxt}>{dlSpeed > 0 ? formatSpeed(dlSpeed) : '—'}</Text>
+                  <Text style={s.progMetaTxt}>{dlEta > 0 ? formatEta(dlEta) : '—'}</Text>
+                  <Text style={s.progMetaTxt}>
                     {currentDl?.totalBytes ? formatFileSize(currentDl.totalBytes) : '—'}
                   </Text>
                 </View>
@@ -359,77 +355,101 @@ export default function HomeScreen() {
 
             {/* Success */}
             {success && (
-              <Animated.View entering={FadeInDown.springify().damping(14)} style={[s.card, s.successCard]}>
-                <View style={s.successIconWrap}>
+              <Animated.View
+                entering={FadeInDown.springify().damping(14)}
+                style={[s.card, s.successCard]}
+              >
+                <View style={s.successIconBox}>
                   <Feather name="check" size={28} color={C.accent} />
                 </View>
                 <Text style={s.successTitle}>Download Selesai!</Text>
-                <Text style={s.successSub}>Tersimpan ke galeri kamu</Text>
+                <Text style={s.successSub}>Video tersimpan ke galeri kamu</Text>
                 <TouchableOpacity onPress={() => setSuccess(false)} style={s.againBtn} activeOpacity={0.8}>
                   <Text style={s.againTxt}>Download Lagi</Text>
                 </TouchableOpacity>
               </Animated.View>
             )}
-          </Fade>
+          </Animated.View>
 
-          {/* Platform grid */}
-          <Fade delay={200} style={s.section}>
+          {/* ── Stats ── */}
+          <View style={s.sectionWrap}>
+            <Text style={s.sectionTitle}>Statistik</Text>
+            <View style={s.statsRow}>
+              <Stat icon="download"     value={history.length} label="Total"    delay={0}   />
+              <View style={s.statDiv} />
+              <Stat icon="calendar"     value={totalToday}     label="Hari Ini" delay={40}  />
+              <View style={s.statDiv} />
+              <Stat icon="check-circle" value={`${successRate}%`} label="Sukses" delay={80} />
+            </View>
+          </View>
+
+          {/* ── Platform grid ── */}
+          <Animated.View
+            entering={FadeInDown.delay(120).springify().damping(22)}
+            style={s.sectionWrap}
+          >
             <Text style={s.sectionTitle}>Platform Didukung</Text>
             <View style={s.platGrid}>
-              {PLATFORM_LIST.map(name => (
-                <PlatCard
-                  key={name}
-                  name={name}
-                  onPress={async () => {
-                    const text = await Clipboard.getStringAsync()
-                    if (text && isSupportedPlatform(text)) {
-                      setUrl(text.trim()); clearError(); setInfo(null)
-                    }
-                  }}
-                />
-              ))}
+              {PLATFORM_LIST.map(name => <PlatCard key={name} name={name} />)}
             </View>
-          </Fade>
+          </Animated.View>
 
-          {/* Recent downloads */}
+          {/* ── Recent ── */}
           {recent.length > 0 && (
-            <Fade delay={240} style={s.section}>
+            <Animated.View
+              entering={FadeInDown.delay(160).springify().damping(22)}
+              style={s.sectionWrap}
+            >
               <Text style={s.sectionTitle}>Download Terbaru</Text>
               <View style={s.recentList}>
                 {recent.map((item, i) => (
-                  <Animated.View key={item.id} entering={FadeInDown.delay(i * 40).springify().damping(18)}>
-                    <View style={s.recentItem}>
-                      <View style={s.recentThumb}>
-                        {item.thumbnail
-                          ? <Image source={item.thumbnail} style={StyleSheet.absoluteFill} contentFit="cover" />
-                          : <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', backgroundColor: platColor(item.platform) + '22' }]}>
-                              <MaterialCommunityIcons name={platIcon(item.platform)} size={16} color={platColor(item.platform)} />
-                            </View>
-                        }
-                      </View>
-                      <View style={s.recentInfo}>
-                        <Text style={s.recentTitle} numberOfLines={1}>
-                          {item.title || 'Untitled'}
-                        </Text>
-                        <Text style={[s.recentPlat, { color: platColor(item.platform) }]}>
-                          {item.platform} · {item.type === 'video' ? 'Video' : 'Foto'}
-                        </Text>
-                        {item.fileSize > 0 && (
+                  <Animated.View
+                    key={item.id}
+                    entering={FadeInDown.delay(i * 50).springify().damping(20)}
+                    style={s.recentRow}
+                  >
+                    <View style={s.recentThumb}>
+                      {item.thumbnail
+                        ? <Image
+                            source={{ uri: item.thumbnail }}
+                            style={StyleSheet.absoluteFill}
+                            contentFit="cover"
+                          />
+                        : <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', backgroundColor: pc(item.platform) + '22' }]}>
+                            <MaterialCommunityIcons name={pi(item.platform)} size={16} color={pc(item.platform)} />
+                          </View>
+                      }
+                    </View>
+                    <View style={s.recentInfo}>
+                      <Text style={s.recentTitle} numberOfLines={1}>
+                        {item.title || 'Untitled'}
+                      </Text>
+                      <Text style={[s.recentPlat, { color: pc(item.platform) }]}>
+                        {item.platform} · {item.type === 'video' ? 'Video' : 'Foto'}
+                      </Text>
+                      {item.fileSize > 0 && (
+                        <View style={s.recentProgWrap}>
+                          <View style={[s.recentProg, { flex: 1 }]}>
+                            <View style={[s.recentProgFill, { width: '100%' }]} />
+                          </View>
                           <Text style={s.recentSize}>{formatFileSize(item.fileSize)}</Text>
-                        )}
-                      </View>
-                      <View style={[s.recentBadge, { backgroundColor: item.status === 'completed' ? C.successDim : C.errorDim }]}>
-                        <Feather
-                          name={item.status === 'completed' ? 'check' : 'x'}
-                          size={11}
-                          color={item.status === 'completed' ? C.success : C.error}
-                        />
-                      </View>
+                        </View>
+                      )}
+                    </View>
+                    <View style={[
+                      s.recentBadge,
+                      { backgroundColor: item.status === 'completed' ? C.successDim : C.errorDim },
+                    ]}>
+                      <Feather
+                        name={item.status === 'completed' ? 'check' : 'x'}
+                        size={11}
+                        color={item.status === 'completed' ? C.success : C.error}
+                      />
                     </View>
                   </Animated.View>
                 ))}
               </View>
-            </Fade>
+            </Animated.View>
           )}
         </ScrollView>
       </KeyboardAvoidingView>
@@ -437,28 +457,27 @@ export default function HomeScreen() {
   )
 }
 
+const CARD_W = (W - 40 - 30) / 4
+
 const s = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: C.bg,
-  },
+  root: { flex: 1, backgroundColor: C.bg },
   header: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingBottom: 8,
+    paddingBottom: 12,
   },
   greeting: {
     fontFamily: 'PlusJakartaSans_800ExtraBold',
-    fontSize: 22,
+    fontSize: 18,
     color: C.text,
   },
   greetSub: {
     fontFamily: 'PlusJakartaSans_500Medium',
     fontSize: 13,
     color: C.textSub,
-    marginTop: 2,
+    marginTop: 3,
   },
   headerBadge: {
     flexDirection: 'row',
@@ -471,77 +490,15 @@ const s = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
-  headerBadgeTxt: {
+  headerCount: {
     fontFamily: 'PlusJakartaSans_700Bold',
     fontSize: 14,
     color: C.accent,
   },
-  heroSection: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    gap: 4,
-  },
-  heroLine1: {
-    fontFamily: 'PlusJakartaSans_800ExtraBold',
-    fontSize: 38,
-    color: C.text,
-    letterSpacing: -1,
-    lineHeight: 42,
-  },
-  heroLine2: {
-    fontFamily: 'PlusJakartaSans_800ExtraBold',
-    fontSize: 38,
-    color: C.accent,
-    letterSpacing: -1,
-    lineHeight: 44,
-  },
-  heroSub: {
-    fontFamily: 'PlusJakartaSans_500Medium',
-    fontSize: 14,
-    color: C.textSub,
-    marginTop: 6,
-    lineHeight: 20,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: C.card,
-    marginHorizontal: 20,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: C.border,
-    paddingVertical: 16,
-    paddingHorizontal: 8,
-    marginBottom: 4,
-  },
-  statCard: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 4,
-  },
-  statDivider: {
-    width: 1,
-    height: 32,
-    backgroundColor: C.border,
-  },
-  statVal: {
-    fontFamily: 'PlusJakartaSans_800ExtraBold',
-    fontSize: 20,
-    color: C.text,
-  },
-  statLbl: {
-    fontFamily: 'PlusJakartaSans_500Medium',
-    fontSize: 11,
-    color: C.textSub,
-  },
-  section: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    gap: 6,
-  },
+  sectionWrap: { paddingHorizontal: 20, paddingTop: 20, gap: 6 },
   sectionTitle: {
     fontFamily: 'PlusJakartaSans_800ExtraBold',
-    fontSize: 18,
+    fontSize: 17,
     color: C.text,
     letterSpacing: -0.3,
   },
@@ -549,7 +506,6 @@ const s = StyleSheet.create({
     fontFamily: 'PlusJakartaSans_500Medium',
     fontSize: 13,
     color: C.textSub,
-    marginBottom: 8,
   },
   inputCard: {
     flexDirection: 'row',
@@ -558,15 +514,12 @@ const s = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: C.border,
-    paddingRight: 6,
     marginTop: 10,
-    gap: 8,
+    overflow: 'hidden',
   },
   inputPrefix: {
-    width: 44,
-    height: 48,
-    borderTopLeftRadius: 13,
-    borderBottomLeftRadius: 13,
+    width: 46,
+    height: 50,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -577,10 +530,9 @@ const s = StyleSheet.create({
     color: C.text,
     fontFamily: 'PlusJakartaSans_500Medium',
     paddingVertical: 14,
+    paddingRight: 8,
   },
-  inputAction: {
-    padding: 10,
-  },
+  inputAction: { padding: 12 },
   pasteBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -589,13 +541,14 @@ const s = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 8,
+    margin: 6,
   },
   pasteTxt: {
     fontFamily: 'PlusJakartaSans_700Bold',
     fontSize: 13,
     color: C.bg,
   },
-  errorCard: {
+  errCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -606,7 +559,7 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: C.error + '33',
   },
-  errorTxt: {
+  errTxt: {
     flex: 1,
     fontFamily: 'PlusJakartaSans_500Medium',
     fontSize: 13,
@@ -627,11 +580,7 @@ const s = StyleSheet.create({
     padding: 14,
     gap: 10,
   },
-  infoRow: {
-    flexDirection: 'row',
-    gap: 8,
-    flexWrap: 'wrap',
-  },
+  infoRow: { flexDirection: 'row', gap: 8 },
   platBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -645,6 +594,7 @@ const s = StyleSheet.create({
     fontSize: 12,
   },
   typeBadge: {
+    backgroundColor: C.accentDim,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -662,15 +612,11 @@ const s = StyleSheet.create({
   },
   thumb: {
     width: '100%',
-    height: 140,
+    height: 150,
     borderRadius: 10,
-    backgroundColor: C.card3,
+    backgroundColor: C.card2,
   },
-  qualRow: {
-    flexDirection: 'row',
-    gap: 8,
-    flexWrap: 'wrap',
-  },
+  qualRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   qualPill: {
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -679,19 +625,9 @@ const s = StyleSheet.create({
     borderColor: C.border,
     backgroundColor: C.card2,
   },
-  qualPillOn: {
-    backgroundColor: C.accent,
-    borderColor: C.accent,
-  },
-  qualTxt: {
-    fontFamily: 'PlusJakartaSans_600SemiBold',
-    fontSize: 13,
-    color: C.textSub,
-  },
-  qualTxtOn: {
-    color: C.bg,
-    fontFamily: 'PlusJakartaSans_700Bold',
-  },
+  qualPillOn: { backgroundColor: C.accent, borderColor: C.accent },
+  qualTxt:   { fontFamily: 'PlusJakartaSans_600SemiBold', fontSize: 13, color: C.textSub },
+  qualTxtOn: { color: C.bg, fontFamily: 'PlusJakartaSans_700Bold' },
   dlBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -719,10 +655,11 @@ const s = StyleSheet.create({
     borderRadius: 3,
     minWidth: 6,
   },
-  progHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  progHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  progDot: {
+    width: 8, height: 8, borderRadius: 4,
+    backgroundColor: C.accent,
+    flexShrink: 0,
   },
   progTitle: {
     flex: 1,
@@ -735,30 +672,22 @@ const s = StyleSheet.create({
     fontSize: 16,
     color: C.accent,
   },
-  progStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 4,
-  },
-  progStat: {
+  progMeta: { flexDirection: 'row', justifyContent: 'space-between' },
+  progMetaTxt: {
     fontFamily: 'PlusJakartaSans_500Medium',
     fontSize: 12,
     color: C.textSub,
   },
   successCard: {
     alignItems: 'center',
-    borderColor: C.borderHi,
     backgroundColor: C.accentDim,
+    borderColor: C.borderHi,
   },
-  successIconWrap: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: C.accentDim,
-    borderWidth: 2,
-    borderColor: C.borderHi,
-    alignItems: 'center',
-    justifyContent: 'center',
+  successIconBox: {
+    width: 64, height: 64, borderRadius: 32,
+    backgroundColor: 'rgba(200,245,0,0.18)',
+    borderWidth: 2, borderColor: C.borderHi,
+    alignItems: 'center', justifyContent: 'center',
   },
   successTitle: {
     fontFamily: 'PlusJakartaSans_800ExtraBold',
@@ -771,54 +700,82 @@ const s = StyleSheet.create({
     color: C.textSub,
   },
   againBtn: {
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: C.card2,
-    borderWidth: 1,
-    borderColor: C.border,
+    paddingHorizontal: 24, paddingVertical: 10,
+    borderRadius: 10, backgroundColor: C.card2,
+    borderWidth: 1, borderColor: C.border,
   },
   againTxt: {
     fontFamily: 'PlusJakartaSans_600SemiBold',
     fontSize: 13,
     color: C.textSub,
   },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: C.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: C.border,
+    paddingVertical: 18,
+    paddingHorizontal: 8,
+    marginTop: 8,
+  },
+  statCard: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 5,
+  },
+  statIconWrap: {
+    width: 32, height: 32, borderRadius: 9,
+    backgroundColor: C.accentDim,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  statVal: {
+    fontFamily: 'PlusJakartaSans_800ExtraBold',
+    fontSize: 20,
+    color: C.text,
+  },
+  statLbl: {
+    fontFamily: 'PlusJakartaSans_500Medium',
+    fontSize: 11,
+    color: C.textSub,
+  },
+  statDiv: {
+    width: 1,
+    height: 36,
+    backgroundColor: C.border,
+  },
   platGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
-    marginTop: 10,
+    marginTop: 8,
+  },
+  platCardWrap: {
+    width: CARD_W,
   },
   platCard: {
-    width: '22%',
-    aspectRatio: 1,
     backgroundColor: C.card,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: C.border,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    padding: 8,
+    paddingVertical: 14,
+    gap: 8,
   },
   platIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 42, height: 42, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
   },
   platName: {
     fontFamily: 'PlusJakartaSans_600SemiBold',
-    fontSize: 9,
+    fontSize: 10,
     color: C.textSub,
     textAlign: 'center',
   },
-  recentList: {
-    gap: 8,
-    marginTop: 8,
-  },
-  recentItem: {
+  recentList: { gap: 8, marginTop: 8 },
+  recentRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
@@ -826,20 +783,14 @@ const s = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: C.border,
-    padding: 10,
+    padding: 12,
   },
   recentThumb: {
-    width: 48,
-    height: 48,
-    borderRadius: 10,
-    overflow: 'hidden',
-    backgroundColor: C.card2,
+    width: 50, height: 50, borderRadius: 10,
+    overflow: 'hidden', backgroundColor: C.card2,
     flexShrink: 0,
   },
-  recentInfo: {
-    flex: 1,
-    gap: 3,
-  },
+  recentInfo: { flex: 1, gap: 4 },
   recentTitle: {
     fontFamily: 'PlusJakartaSans_600SemiBold',
     fontSize: 13,
@@ -849,16 +800,29 @@ const s = StyleSheet.create({
     fontFamily: 'PlusJakartaSans_700Bold',
     fontSize: 11,
   },
+  recentProgWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 2,
+  },
+  recentProg: {
+    height: 4, borderRadius: 2,
+    backgroundColor: C.card3,
+    overflow: 'hidden',
+  },
+  recentProgFill: {
+    height: '100%',
+    backgroundColor: C.accent,
+    borderRadius: 2,
+  },
   recentSize: {
     fontFamily: 'PlusJakartaSans_500Medium',
     fontSize: 11,
     color: C.textSub,
   },
   recentBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 28, height: 28, borderRadius: 8,
+    alignItems: 'center', justifyContent: 'center',
   },
 })

@@ -18,7 +18,7 @@ import { C } from '@/constants/colors'
 import { formatFileSize, formatSpeed, formatEta } from '@/utils/fileUtils'
 import { DownloadRecord } from '@/types'
 
-const PLAT_CFG: Record<string, { color: string; icon: string }> = {
+const PLAT: Record<string, { color: string; icon: string }> = {
   YouTube:    { color: '#FF0000', icon: 'youtube' },
   TikTok:     { color: '#69C9D0', icon: 'music-note-outline' },
   Instagram:  { color: '#E1306C', icon: 'instagram' },
@@ -29,24 +29,26 @@ const PLAT_CFG: Record<string, { color: string; icon: string }> = {
   Vimeo:      { color: '#1AB7EA', icon: 'vimeo' },
   Dailymotion:{ color: '#0066DC', icon: 'television-play' },
 }
-const platColor = (n: string) => PLAT_CFG[n]?.color ?? '#888'
-const platIcon  = (n: string) => (PLAT_CFG[n]?.icon ?? 'link') as any
+const pc = (n: string) => PLAT[n]?.color ?? '#888'
+const pi = (n: string) => (PLAT[n]?.icon ?? 'link') as any
 
-function getGroupLabel(dateStr: string): string {
-  const d = new Date(dateStr), now = new Date()
+function groupLabel(dateStr: string): string {
+  const d    = new Date(dateStr)
+  const now  = new Date()
   const diff = Math.floor((now.getTime() - d.getTime()) / 86400000)
   if (diff === 0) return 'Hari Ini'
   if (diff === 1) return 'Kemarin'
-  if (diff < 7)  return `${diff} Hari Lalu`
-  if (diff < 30) return `${Math.floor(diff / 7)} Minggu Lalu`
+  if (diff <  7)  return `${diff} Hari Lalu`
+  if (diff < 30)  return `${Math.floor(diff / 7)} Minggu Lalu`
   return d.toLocaleDateString('id', { month: 'long', year: 'numeric' })
 }
 
-function formatTime(dateStr: string): string {
+function fmtTime(dateStr: string): string {
   return new Date(dateStr).toLocaleTimeString('id', { hour: '2-digit', minute: '2-digit' })
 }
 
-function ActiveDot() {
+// ── Pulse dot ─────────────────────────────────────────────────
+function PulseDot() {
   const op = useSharedValue(1)
   useEffect(() => {
     op.value = withRepeat(
@@ -56,96 +58,99 @@ function ActiveDot() {
       ), -1,
     )
   }, [])
-  const anim = useAnimatedStyle(() => ({ opacity: op.value }))
-  return <Animated.View style={[d.activeDot, anim]} />
+  return (
+    <Animated.View
+      style={[h.dot, useAnimatedStyle(() => ({ opacity: op.value }))]}
+    />
+  )
 }
 
+// ── Active download card ───────────────────────────────────────
 function ActiveCard({ item }: { item: any }) {
-  const cancel   = useStore(s => s.cancelDownload)
-  const pct      = Math.round(item.progress ?? 0)
-  const color    = platColor(item.platform ?? '')
+  const cancel = useStore(s => s.cancelDownload)
+  const pct    = Math.round(item.progress ?? 0)
+  const color  = pc(item.platform ?? '')
 
-  const w = useSharedValue(0)
+  const wv = useSharedValue(0)
   useEffect(() => {
-    w.value = withTiming(pct, { duration: 450 })
+    wv.value = withTiming(pct, { duration: 450, easing: Easing.out(Easing.cubic) })
   }, [pct])
-  const fillStyle = useAnimatedStyle(() => ({
-    width: `${Math.max(0, Math.min(100, w.value))}%` as any,
-  }))
+  const fill = useAnimatedStyle(() => ({ width: `${Math.max(0, Math.min(100, wv.value))}%` as any }))
 
   return (
     <Animated.View
-      entering={FadeInDown.springify().damping(18)}
-      exiting={FadeOutRight.duration(200)}
+      entering={FadeInDown.springify().damping(20)}
+      exiting={FadeOutRight.duration(220)}
       layout={Layout.springify()}
-      style={d.activeCard}
+      style={h.activeCard}
     >
-      <View style={d.activeHeader}>
-        <ActiveDot />
-        <Text style={d.activeTitle} numberOfLines={1}>{item.title || 'Mengunduh…'}</Text>
-        <View style={[d.activePlat, { backgroundColor: color + '22' }]}>
-          <MaterialCommunityIcons name={platIcon(item.platform ?? '')} size={12} color={color} />
-          <Text style={[d.activePlatTxt, { color }]}>{item.platform}</Text>
+      <View style={h.activeHead}>
+        <PulseDot />
+        <Text style={h.activeTitle} numberOfLines={1}>{item.title || 'Mengunduh…'}</Text>
+        <View style={[h.platTag, { backgroundColor: color + '22' }]}>
+          <MaterialCommunityIcons name={pi(item.platform ?? '')} size={12} color={color} />
+          <Text style={[h.platTagTxt, { color }]}>{item.platform}</Text>
         </View>
       </View>
-      <View style={d.progTrack}>
-        <Animated.View style={[d.progFill, fillStyle]} />
+      <View style={h.progTrack}>
+        <Animated.View style={[h.progFill, fill]} />
       </View>
-      <View style={d.activeStats}>
-        <Text style={d.activeStat}>{pct}%</Text>
-        <Text style={d.activeStat}>
-          {(item.speed ?? 0) > 0 ? formatSpeed(item.speed) : '—'}
-        </Text>
-        <Text style={d.activeStat}>
-          {(item.eta ?? 0) > 0 ? formatEta(item.eta) : '—'}
-        </Text>
+      <View style={h.activeStats}>
+        <Text style={h.activeStatTxt}>{pct}%</Text>
+        <Text style={h.activeStatTxt}>{(item.speed ?? 0) > 0 ? formatSpeed(item.speed) : '—'}</Text>
+        <Text style={h.activeStatTxt}>{(item.eta   ?? 0) > 0 ? formatEta(item.eta)     : '—'}</Text>
         <TouchableOpacity
           onPress={() => cancel(item.id)}
-          style={d.cancelBtn}
+          style={h.cancelBtn}
           activeOpacity={0.8}
         >
-          <Feather name="x" size={12} color={C.error} />
-          <Text style={d.cancelTxt}>Batalkan</Text>
+          <Feather name="x" size={11} color={C.error} />
+          <Text style={h.cancelTxt}>Batalkan</Text>
         </TouchableOpacity>
       </View>
     </Animated.View>
   )
 }
 
-function HistoryRow({ item, index, onDelete }: {
+// ── History row ───────────────────────────────────────────────
+function HistRow({ item, index, onDelete }: {
   item: DownloadRecord; index: number; onDelete: () => void
 }) {
   const done  = item.status === 'completed'
-  const color = platColor(item.platform)
-  const icon  = platIcon(item.platform)
+  const color = pc(item.platform)
 
   return (
     <Animated.View
-      entering={FadeInDown.delay(Math.min(index, 8) * 40).springify().damping(20)}
+      entering={FadeInDown.delay(Math.min(index, 10) * 40).springify().damping(22)}
       exiting={FadeOutRight.duration(200)}
       layout={Layout.springify()}
-      style={d.rowWrap}
+      style={h.rowWrap}
     >
-      <View style={d.row}>
-        <View style={d.thumb}>
+      <View style={h.row}>
+        <View style={h.thumb}>
           {item.thumbnail
-            ? <Image source={item.thumbnail} style={StyleSheet.absoluteFill} contentFit="cover" />
+            ? <Image source={{ uri: item.thumbnail }} style={StyleSheet.absoluteFill} contentFit="cover" />
             : <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', backgroundColor: color + '22' }]}>
-                <MaterialCommunityIcons name={icon} size={16} color={color} />
+                <MaterialCommunityIcons name={pi(item.platform)} size={16} color={color} />
               </View>
           }
         </View>
-        <View style={d.rowInfo}>
-          <Text style={d.rowTitle} numberOfLines={1}>{item.title || 'Untitled'}</Text>
-          <Text style={[d.rowPlat, { color }]}>
+        <View style={h.rowInfo}>
+          <Text style={h.rowTitle} numberOfLines={1}>{item.title || 'Untitled'}</Text>
+          <Text style={[h.rowPlat, { color }]}>
             {item.platform} · {item.type === 'video' ? 'Video' : 'Foto'}
           </Text>
-          <Text style={d.rowMeta}>
-            {item.fileSize > 0 ? formatFileSize(item.fileSize) + ' · ' : ''}{formatTime(item.downloadedAt)}
+          <Text style={h.rowMeta}>
+            {item.fileSize > 0 ? formatFileSize(item.fileSize) + ' · ' : ''}{fmtTime(item.downloadedAt)}
           </Text>
+          {item.fileSize > 0 && (
+            <View style={h.miniProg}>
+              <View style={[h.miniProgFill, done && { width: '100%' }]} />
+            </View>
+          )}
         </View>
-        <View style={{ alignItems: 'center', gap: 6 }}>
-          <View style={[d.statusBadge, { backgroundColor: done ? C.successDim : C.errorDim }]}>
+        <View style={{ alignItems: 'center', gap: 8 }}>
+          <View style={[h.badge, { backgroundColor: done ? C.successDim : C.errorDim }]}>
             <Feather name={done ? 'check' : 'x'} size={11} color={done ? C.success : C.error} />
           </View>
           <TouchableOpacity
@@ -161,9 +166,11 @@ function HistoryRow({ item, index, onDelete }: {
   )
 }
 
+// ── Filter pill ───────────────────────────────────────────────
 const FILTERS = ['Semua', 'Video', 'Foto', 'Gagal'] as const
 type Filter = typeof FILTERS[number]
 
+// ── Main screen ───────────────────────────────────────────────
 export default function HistoryScreen() {
   const insets = useSafeAreaInsets()
   const [filter, setFilter] = useState<Filter>('Semua')
@@ -184,7 +191,9 @@ export default function HistoryScreen() {
     let list = [...history]
     if (search) {
       const q = search.toLowerCase()
-      list = list.filter(i => i.title.toLowerCase().includes(q) || i.platform.toLowerCase().includes(q))
+      list = list.filter(i =>
+        i.title.toLowerCase().includes(q) || i.platform.toLowerCase().includes(q)
+      )
     }
     if (filter === 'Video') list = list.filter(i => i.type === 'video')
     if (filter === 'Foto')  list = list.filter(i => i.type !== 'video')
@@ -195,20 +204,20 @@ export default function HistoryScreen() {
   const sections = useMemo(() => {
     const map = new Map<string, DownloadRecord[]>()
     filtered.forEach(item => {
-      const lbl = getGroupLabel(item.downloadedAt)
+      const lbl = groupLabel(item.downloadedAt)
       if (!map.has(lbl)) map.set(lbl, [])
       map.get(lbl)!.push(item)
     })
     return Array.from(map.entries()).map(([title, data]) => ({ title, data }))
   }, [filtered])
 
-  const handleDelete = useCallback(async (item: DownloadRecord) => {
-    Alert.alert('Hapus', 'Hapus item ini dari riwayat?', [
+  const handleDelete = useCallback((item: DownloadRecord) => {
+    Alert.alert('Hapus Item', 'Hapus item ini dari riwayat?', [
       { text: 'Batal', style: 'cancel' },
       {
         text: 'Hapus', style: 'destructive',
         onPress: async () => {
-          await historyService.deleteRecord(item.id)
+          try { await historyService.deleteRecord(item.id) } catch {}
           removeHistory(item.id)
         },
       },
@@ -216,12 +225,12 @@ export default function HistoryScreen() {
   }, [removeHistory])
 
   const handleClearAll = useCallback(() => {
-    Alert.alert('Hapus Semua?', 'Semua riwayat download akan dihapus permanen.', [
+    Alert.alert('Hapus Semua?', 'Seluruh riwayat download akan dihapus permanen.', [
       { text: 'Batal', style: 'cancel' },
       {
         text: 'Hapus', style: 'destructive',
         onPress: async () => {
-          await historyService.clearAll()
+          try { await historyService.clearAll() } catch {}
           clearHistory()
         },
       },
@@ -229,86 +238,107 @@ export default function HistoryScreen() {
   }, [clearHistory])
 
   return (
-    <View style={d.root}>
+    <View style={h.root}>
       <StatusBar barStyle="light-content" backgroundColor={C.bg} />
       <SectionList
         sections={sections}
         keyExtractor={item => item.id}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={{ paddingBottom: 130 }}
         stickySectionHeadersEnabled={false}
+
         ListHeaderComponent={
           <>
-            <Animated.View entering={FadeInDown.duration(350)} style={[d.header, { paddingTop: insets.top + 16 }]}>
+            {/* Header */}
+            <Animated.View
+              entering={FadeInDown.duration(360).springify().damping(22)}
+              style={[h.pageHeader, { paddingTop: insets.top + 18 }]}
+            >
               <View>
-                <Text style={d.headerTitle}>Riwayat</Text>
-                <Text style={d.headerSub}>
-                  {history.length} unduhan · {active.length} aktif
+                <Text style={h.pageTitle}>Riwayat</Text>
+                <Text style={h.pageSub}>
+                  {history.length} unduhan{active.length > 0 ? ` · ${active.length} aktif` : ''}
                 </Text>
               </View>
               {history.length > 0 && (
-                <TouchableOpacity onPress={handleClearAll} style={d.clearBtn} activeOpacity={0.8}>
+                <TouchableOpacity onPress={handleClearAll} style={h.clearBtn} activeOpacity={0.8}>
                   <Feather name="trash-2" size={15} color={C.error} />
                 </TouchableOpacity>
               )}
             </Animated.View>
 
+            {/* Active downloads */}
             {active.length > 0 && (
-              <Animated.View entering={FadeInDown.delay(50).springify()} style={{ paddingHorizontal: 20 }}>
-                <Text style={d.groupLbl}>SEDANG BERJALAN</Text>
+              <Animated.View
+                entering={FadeInDown.delay(40).springify().damping(22)}
+                style={h.activeSection}
+              >
+                <Text style={h.groupLbl}>SEDANG BERJALAN</Text>
                 {active.map(item => <ActiveCard key={item.id} item={item} />)}
               </Animated.View>
             )}
 
-            <Animated.View entering={FadeInDown.delay(60).springify()} style={d.searchWrap}>
-              <View style={d.searchBox}>
+            {/* Search */}
+            <Animated.View
+              entering={FadeInDown.delay(60).springify().damping(22)}
+              style={h.searchWrap}
+            >
+              <View style={h.searchBox}>
                 <Feather name="search" size={14} color={C.textSub} />
                 <TextInput
-                  style={d.searchInput}
+                  style={h.searchInput}
                   value={search}
                   onChangeText={setSearch}
                   placeholder="Cari riwayat…"
                   placeholderTextColor={C.textMuted}
                 />
                 {search.length > 0 && (
-                  <TouchableOpacity onPress={() => setSearch('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <TouchableOpacity
+                    onPress={() => setSearch('')}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
                     <Feather name="x" size={14} color={C.textSub} />
                   </TouchableOpacity>
                 )}
               </View>
             </Animated.View>
 
-            <Animated.View entering={FadeInDown.delay(80).springify()} style={d.filterRow}>
+            {/* Filters */}
+            <Animated.View
+              entering={FadeInDown.delay(80).springify().damping(22)}
+              style={h.filterRow}
+            >
               {FILTERS.map(f => (
                 <TouchableOpacity
                   key={f}
                   onPress={() => setFilter(f)}
-                  style={[d.filterPill, filter === f && d.filterPillOn]}
+                  style={[h.filterPill, filter === f && h.filterPillOn]}
                   activeOpacity={0.75}
                 >
-                  <Text style={[d.filterTxt, filter === f && d.filterTxtOn]}>{f}</Text>
+                  <Text style={[h.filterTxt, filter === f && h.filterTxtOn]}>{f}</Text>
                 </TouchableOpacity>
               ))}
             </Animated.View>
           </>
         }
+
         renderSectionHeader={({ section }) => (
-          <Text style={d.groupLbl}>{section.title.toUpperCase()}</Text>
+          <Text style={[h.groupLbl, { marginLeft: 20, marginBottom: 8, marginTop: 8 }]}>
+            {section.title.toUpperCase()}
+          </Text>
         )}
+
         renderItem={({ item, index }) => (
-          <HistoryRow
-            item={item}
-            index={index}
-            onDelete={() => handleDelete(item)}
-          />
+          <HistRow item={item} index={index} onDelete={() => handleDelete(item)} />
         )}
+
         ListEmptyComponent={
-          <Animated.View entering={FadeInDown.delay(100).springify()} style={d.empty}>
-            <View style={d.emptyIcon}>
-              <MaterialCommunityIcons name="download-off-outline" size={32} color={C.textMuted} />
+          <Animated.View entering={FadeInDown.delay(100).springify().damping(22)} style={h.empty}>
+            <View style={h.emptyIcon}>
+              <MaterialCommunityIcons name="download-off-outline" size={30} color={C.textMuted} />
             </View>
-            <Text style={d.emptyTitle}>Belum ada riwayat</Text>
-            <Text style={d.emptySub}>Video yang kamu unduh akan muncul di sini</Text>
+            <Text style={h.emptyTitle}>Belum ada riwayat</Text>
+            <Text style={h.emptySub}>Video yang kamu unduh akan muncul di sini</Text>
           </Animated.View>
         }
       />
@@ -316,45 +346,42 @@ export default function HistoryScreen() {
   )
 }
 
-const d = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: C.bg,
-  },
-  header: {
+const h = StyleSheet.create({
+  root: { flex: 1, backgroundColor: C.bg },
+  pageHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingBottom: 16,
   },
-  headerTitle: {
+  pageTitle: {
     fontFamily: 'PlusJakartaSans_800ExtraBold',
     fontSize: 28,
     color: C.text,
     letterSpacing: -0.5,
   },
-  headerSub: {
+  pageSub: {
     fontFamily: 'PlusJakartaSans_500Medium',
     fontSize: 13,
     color: C.textSub,
-    marginTop: 3,
-  },
-  clearBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    backgroundColor: C.errorDim,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: C.error + '33',
     marginTop: 4,
   },
-  searchWrap: {
-    paddingHorizontal: 20,
-    marginBottom: 12,
+  clearBtn: {
+    width: 38, height: 38, borderRadius: 10,
+    backgroundColor: C.errorDim,
+    borderWidth: 1, borderColor: C.error + '40',
+    alignItems: 'center', justifyContent: 'center',
+    marginTop: 4,
   },
+  activeSection: { paddingHorizontal: 20, marginBottom: 4 },
+  groupLbl: {
+    fontFamily: 'PlusJakartaSans_700Bold',
+    fontSize: 10,
+    color: C.textMuted,
+    letterSpacing: 1.5,
+  },
+  searchWrap: { paddingHorizontal: 20, marginBottom: 12 },
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -376,7 +403,7 @@ const d = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: 20,
     gap: 8,
-    marginBottom: 14,
+    marginBottom: 10,
   },
   filterPill: {
     paddingHorizontal: 14,
@@ -399,14 +426,10 @@ const d = StyleSheet.create({
     color: C.bg,
     fontFamily: 'PlusJakartaSans_700Bold',
   },
-  groupLbl: {
-    fontFamily: 'PlusJakartaSans_700Bold',
-    fontSize: 10,
-    color: C.textMuted,
-    letterSpacing: 1.2,
-    marginLeft: 20,
-    marginBottom: 8,
-    marginTop: 4,
+  dot: {
+    width: 8, height: 8, borderRadius: 4,
+    backgroundColor: C.accent,
+    flexShrink: 0,
   },
   activeCard: {
     backgroundColor: C.card,
@@ -416,26 +439,16 @@ const d = StyleSheet.create({
     padding: 14,
     gap: 10,
     marginBottom: 10,
+    marginTop: 8,
   },
-  activeHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  activeDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: C.accent,
-    flexShrink: 0,
-  },
+  activeHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   activeTitle: {
     flex: 1,
     fontFamily: 'PlusJakartaSans_600SemiBold',
     fontSize: 13,
     color: C.text,
   },
-  activePlat: {
+  platTag: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
@@ -443,7 +456,7 @@ const d = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
-  activePlatTxt: {
+  platTagTxt: {
     fontFamily: 'PlusJakartaSans_700Bold',
     fontSize: 11,
   },
@@ -459,12 +472,8 @@ const d = StyleSheet.create({
     borderRadius: 3,
     minWidth: 5,
   },
-  activeStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  activeStat: {
+  activeStats: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  activeStatTxt: {
     fontFamily: 'PlusJakartaSans_600SemiBold',
     fontSize: 12,
     color: C.textSub,
@@ -484,10 +493,7 @@ const d = StyleSheet.create({
     fontSize: 12,
     color: C.error,
   },
-  rowWrap: {
-    paddingHorizontal: 20,
-    marginBottom: 8,
-  },
+  rowWrap: { paddingHorizontal: 20, marginBottom: 8 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -499,17 +505,13 @@ const d = StyleSheet.create({
     padding: 12,
   },
   thumb: {
-    width: 50,
-    height: 50,
-    borderRadius: 10,
+    width: 52, height: 52,
+    borderRadius: 11,
     overflow: 'hidden',
-    flexShrink: 0,
     backgroundColor: C.card2,
+    flexShrink: 0,
   },
-  rowInfo: {
-    flex: 1,
-    gap: 4,
-  },
+  rowInfo: { flex: 1, gap: 3 },
   rowTitle: {
     fontFamily: 'PlusJakartaSans_600SemiBold',
     fontSize: 13,
@@ -524,27 +526,33 @@ const d = StyleSheet.create({
     fontSize: 11,
     color: C.textSub,
   },
-  statusBadge: {
-    width: 26,
-    height: 26,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
+  miniProg: {
+    height: 3,
+    backgroundColor: C.card3,
+    borderRadius: 2,
+    overflow: 'hidden',
+    marginTop: 3,
+  },
+  miniProgFill: {
+    height: '100%',
+    width: '100%',
+    backgroundColor: C.accent,
+    borderRadius: 2,
+  },
+  badge: {
+    width: 26, height: 26, borderRadius: 7,
+    alignItems: 'center', justifyContent: 'center',
   },
   empty: {
     alignItems: 'center',
-    paddingTop: 72,
+    paddingTop: 80,
     gap: 14,
   },
   emptyIcon: {
-    width: 72,
-    height: 72,
-    borderRadius: 22,
+    width: 72, height: 72, borderRadius: 22,
     backgroundColor: C.card2,
-    borderWidth: 1,
-    borderColor: C.border,
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderWidth: 1, borderColor: C.border,
+    alignItems: 'center', justifyContent: 'center',
   },
   emptyTitle: {
     fontFamily: 'PlusJakartaSans_800ExtraBold',

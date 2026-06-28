@@ -1,4 +1,4 @@
 - [SaveFlow Zustand store](saveflow-zustand.md) — store at store/useStore.ts; downloadStore.tsx deleted, DO NOT add Provider to _layout.tsx
 - [SaveFlow OTA setup](saveflow-ota.md) — EAS account chleo, project video-downloader, channel production, runtime 1.0.0; OTA command pattern stored in topic file
-- [SaveFlow UI design system](saveflow-ui.md) — deep violet glassmorphism; color tokens in C/G from constants/colors.ts; font = Plus Jakarta Sans (800ExtraBold headers, 700Bold labels, 600SemiBold body, 500Medium sub); FloatingBackground on all screens; GlassCard as shared card primitive
+- [SaveFlow UI design system](saveflow-ui.md) — #0D0D0D + #C8F500 neon lime; NO FloatingBackground/GlassCard (deleted); pill navbar spring-animated in (tabs)/_layout.tsx; copyright "by Cleo 桜闇" in welcome + settings
 - [SaveFlow project structure](saveflow-structure.md) — app di video-downloader/ (root), bukan artifacts/; lockfile path-sensitive: hapus pnpm-lock.yaml & node_modules lalu pnpm install --prefer-offline jika pindah folder
